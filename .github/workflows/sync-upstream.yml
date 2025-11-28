@@ -1,0 +1,65 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for new upstream version
+        id: check
+        run: |
+          git remote add upstream https://github.com/grosser/parallel_tests.git
+          git fetch upstream --tags
+          LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          echo "tag=$LATEST" >> $GITHUB_OUTPUT
+
+          if git merge-base --is-ancestor "$LATEST" HEAD; then
+            echo "needs_sync=false" >> $GITHUB_OUTPUT
+          else
+            echo "needs_sync=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create sync PR
+        if: steps.check.outputs.needs_sync == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="sync-upstream-$TAG"
+
+          # Check if PR already exists
+          EXISTING=$(gh pr list --search "head:$BRANCH" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR already exists: #$EXISTING"
+            exit 0
+          fi
+
+          git checkout -b $BRANCH
+
+          # Merge upstream, keep our wrapper files on conflict
+          git merge $TAG -m "Merge upstream $TAG" \
+            -X ours \
+            || true
+
+          git push -u origin $BRANCH
+          git push origin $TAG
+
+          gh pr create \
+            --title "Sync upstream $TAG" \
+            --body "Merge upstream parallel_tests $TAG. Review changes and ensure wrapper still works." \
+            --label "dependencies"

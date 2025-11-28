@@ -57,7 +57,7 @@ module ParallelTests
       Tempfile.open 'parallel_tests-lock' do |lock|
         ParallelTests.with_pid_file do
           simulate_output_for_ci options[:serialize_stdout] do
-            Parallel.map_with_index(items, in_threads: num_processes) do |item, index|
+            ParallelTests::ParallelRunner.map_with_index(items, in_threads: num_processes) do |item, index|
               result = yield(item, index)
               reprint_output(result, lock.path) if options[:serialize_stdout]
               ParallelTests.stop_all_processes if options[:fail_fast] && result[:exit_status] != 0

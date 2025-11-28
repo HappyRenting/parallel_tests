@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require "parallel"
+require "parallel_tests/parallel_runner"
 require "parallel_tests/railtie" if defined? Rails::Railtie
 require "rbconfig"
 
@@ -20,7 +20,7 @@ module ParallelTests
         [
           count,
           ENV["PARALLEL_TEST_PROCESSORS"],
-          Parallel.processor_count
+          ParallelRunner.processor_count
         ].detect { |c| !c.to_s.strip.empty? }
       )
     end
