@@ -16,7 +16,7 @@ jobs:
         os: [ubuntu-latest]
         task: [spec]
         include:
-          - ruby: '3.1' # lowest supported version, same as gemspec and .rubocop.yml
+          - ruby: '3.4' # lowest supported version, same as gemspec and .rubocop.yml
             os: ubuntu-latest
             task: rubocop
     steps:
